@@ -1,0 +1,17 @@
+[package]
+name = "learn-to-write-a-compiler"
+version = "0.1.0"
+authors = ["Jack <admin@deadcore.co.uk>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "^0.4"
+env_logger = "^0.7"
+clap = "^2"
+indextree = "4.0.0"
+
+[[bin]]
+name = 'compiler'
+path = 'src/bin/compiler.rs'
