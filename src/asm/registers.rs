@@ -4,10 +4,10 @@ use std::io::{BufWriter, Write};
 #[derive(Clone, Copy)]
 pub struct RegisterIndex(pub u32);
 
-const REGISTER_COUNT: usize = 6;
+const REGISTER_COUNT: usize = 4;
 
 const REGISTERS: [&str; REGISTER_COUNT] = [
-    "r7d", "r8d", "r9d", "r10d", "r11d", "r12d"
+    "%r8", "%r9", "%r10", "%r11"
 ];
 
 #[derive(Clone, Copy)]

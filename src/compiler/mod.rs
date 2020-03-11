@@ -7,7 +7,7 @@ use std::slice::Iter;
 use clap::ArgMatches;
 use log::info;
 
-use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpreamble, cgsub, cgpostamble};
+use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpreamble, cgsub, cgpostamble, cgprintint};
 use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::scanner::{Precedence, Scanner, Token, TokenType};
@@ -50,7 +50,8 @@ impl Compiler {
         let mut registers = Registers::new();
 
         cgpreamble(out.by_ref());
-        self.interpret_ast_to_asm(out.by_ref(), &mut registers, ast);
+        let reg = self.interpret_ast_to_asm(out.by_ref(), &mut registers, ast);
+        cgprintint(reg, out.by_ref());
         cgpostamble(out.by_ref());
 
         Ok(())
