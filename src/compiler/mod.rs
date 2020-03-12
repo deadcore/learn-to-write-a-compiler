@@ -37,13 +37,8 @@ impl Compiler {
     }
 
     pub fn compile(&self, filename: &str) -> Result<()> {
-        let file = fs::read_to_string(filename)?;
-        let staged_tokens: Vec<Token> = file
-            .chars()
-            .flat_map(|token| self.scanner.scan(token))
-            .collect();
+        let tokens: Vec<Token> = self.scanner.new_iterator(filename).collect();
 
-        let tokens = self.coalesce_token_sequence(staged_tokens);
         let ast = self.compile_to_ast(&tokens);
 
         let mut out = File::create("out.s")?;
@@ -88,36 +83,6 @@ impl Compiler {
             AstnodeType::Divide => leftval / rightval,
             AstnodeType::Intlit => ast.int_value,
         };
-    }
-
-    fn coalesce_token_sequence(&self, staged_tokens: Vec<Token>) -> Vec<Token> {
-        let mut tokens = Vec::new();
-        let mut i = 0;
-
-        while i < staged_tokens.len() {
-            let mut token = staged_tokens[i];
-            if token.token == TokenType::Intlit {
-                if i + 1 < staged_tokens.len() {
-                    for j in (i + 1)..staged_tokens.len() {
-                        let next_token = staged_tokens[j];
-                        if next_token.token == TokenType::Intlit {
-                            token.int_value = (token.int_value * 10) + next_token.int_value
-                        } else {
-                            i = j;
-                            break;
-                        }
-                    }
-                } else {
-                    i += 1;
-                }
-            } else {
-                i += 1;
-            }
-
-            tokens.push(token)
-        }
-
-        return tokens;
     }
 
     fn compile_primary_ast(&self, position: usize, tokens: &[Token]) -> ASTNode {
