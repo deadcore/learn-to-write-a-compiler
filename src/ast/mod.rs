@@ -1,4 +1,4 @@
-use crate::scanner::TokenType;
+use crate::scanner::Token;
 
 // AST node types
 #[derive(Debug)]
@@ -7,7 +7,7 @@ pub enum AstnodeType {
     Subtract,
     Multiply,
     Divide,
-    Intlit,
+    Intlit(i32),
 }
 
 // Abstract Syntax Tree structure
@@ -16,7 +16,6 @@ pub struct ASTNode {
     pub op: AstnodeType,
     pub left: Option<Box<ASTNode>>,
     pub right: Option<Box<ASTNode>>,
-    pub int_value: i32,
 }
 
 impl From<TokenType> for AstnodeType {

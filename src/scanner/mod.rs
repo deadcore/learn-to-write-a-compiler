@@ -1,23 +1,60 @@
 use clap::ArgMatches;
 use std::fs;
 use std::str::Chars;
-use std::io::{BufReader, Read, BufRead, Error};
+use std::io::{BufReader, Read, BufRead};
 use std::fs::File;
 use std::io::Result;
+use std::iter::Scan;
 
-#[derive(Debug, Clone, Copy)]
-pub struct Token {
-    pub token: TokenType,
-    pub int_value: i32,
+#[derive(Debug, Clone)]
+pub enum ScannerError {
+    Error(String),
 }
 
+impl std::convert::From<std::io::Error> for ScannerError {
+    fn from(err: std::io::Error) -> Self {
+        ScannerError::Error(format!("{}", err))
+    }
+}
+
+impl std::convert::From<char> for Token {
+    fn from(c: char) -> Self {
+        match c {
+            '+' => Token::Plus,
+            '-' => Token::Minus,
+            '*' => Token::Star,
+            '/' => Token::Slash,
+            '0' => Token::Intlit(0),
+            '1' => Token::Intlit(1),
+            '2' => Token::Intlit(2),
+            '3' => Token::Intlit(3),
+            '4' => Token::Intlit(4),
+            '5' => Token::Intlit(5),
+            '6' => Token::Intlit(6),
+            '7' => Token::Intlit(7),
+            '8' => Token::Intlit(8),
+            '9' => Token::Intlit(9),
+            // ';' => Some(Token { token: TokenType::SemiColon, int_value: 0 }),
+            v => panic!("Unable to handle {}", v)
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ScanResult<T> {
+    Some(T),
+    None,
+    Error(ScannerError),
+}
+
+
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum TokenType {
+pub enum Token {
     Plus,
     Minus,
     Star,
     Slash,
-    Intlit,
+    Intlit(i32),
 }
 
 pub trait Precedence {
@@ -27,11 +64,11 @@ pub trait Precedence {
 impl Precedence for TokenType {
     fn precedence(&self) -> u32 {
         match self {
-            TokenType::Plus => 10,
-            TokenType::Minus => 10,
-            TokenType::Star => 20,
-            TokenType::Slash => 20,
-            TokenType::Intlit => 0,
+            Token::Plus => 10,
+            Token::Minus => 10,
+            Token::Star => 20,
+            Token::Slash => 20,
+            Token::Intlit => 0,
         }
     }
 }
@@ -40,91 +77,120 @@ pub struct Scanner {}
 
 pub struct ScannerIterator {
     inner: BufReader<File>,
-    peeked_result: Option<u8>,
+    peeked_result: ScanResult<u8>,
 }
 
 impl ScannerIterator {
-    pub fn new(reader: BufReader<File>, peeked_result: Option<u8>) -> Self {
+    fn new(reader: BufReader<File>, peeked_result: ScanResult<u8>) -> Self {
         ScannerIterator { inner: reader, peeked_result }
     }
 
-    pub fn open(path: impl AsRef<std::path::Path>) -> Self {
+    fn open(path: impl AsRef<std::path::Path>) -> Self {
         let file = File::open(path).unwrap();
         let reader = BufReader::new(file);
 
-        Self::new(reader, None)
-    }
-
-    fn scan_token(&self, token: char) -> Option<Token> {
-        if self.ignore(token) {
-            return None;
-        }
-        match token {
-            '+' => Some(Token { token: TokenType::Plus, int_value: 0 }),
-            '-' => Some(Token { token: TokenType::Minus, int_value: 0 }),
-            '*' => Some(Token { token: TokenType::Star, int_value: 0 }),
-            '/' => Some(Token { token: TokenType::Slash, int_value: 0 }),
-            '0' => Some(Token { token: TokenType::Intlit, int_value: 0 }),
-            '1' => Some(Token { token: TokenType::Intlit, int_value: 1 }),
-            '2' => Some(Token { token: TokenType::Intlit, int_value: 2 }),
-            '3' => Some(Token { token: TokenType::Intlit, int_value: 3 }),
-            '4' => Some(Token { token: TokenType::Intlit, int_value: 4 }),
-            '5' => Some(Token { token: TokenType::Intlit, int_value: 5 }),
-            '6' => Some(Token { token: TokenType::Intlit, int_value: 6 }),
-            '7' => Some(Token { token: TokenType::Intlit, int_value: 7 }),
-            '8' => Some(Token { token: TokenType::Intlit, int_value: 8 }),
-            '9' => Some(Token { token: TokenType::Intlit, int_value: 9 }),
-            v => {
-                panic!("Unable to handle {}", v);
-            }
-        }
+        Self::new(reader, ScanResult::None)
     }
 
     fn ignore(&self, value: char) -> bool {
         return value == ' ' || '\t' == value || '\n' == value || '\r' == value;
     }
 
-    fn read_byte_from_buffer(&mut self) -> Result<Option<u8>> {
+    fn read_byte_from_buffer(&mut self) -> ScanResult<u8> {
         let mut buffer = [0; 1];
 
-        self.inner.read(&mut buffer)
-            .map(|read| {
-                if read != 0 {
-                    Some(buffer[0])
-                } else {
-                    None
-                }
-            })
-    }
-
-    fn read_byte(&mut self) -> Result<Option<u8>> {
-        match self.peeked_result {
-            Some(byte) => {
-                self.peeked_result = None;
-                return Result::Ok(Some(byte));
-            }
-            None => self.read_byte_from_buffer()
+        match self.inner.read(&mut buffer) {
+            std::io::Result::Ok(bytes_read) if bytes_read == 0 => ScanResult::None,
+            std::io::Result::Ok(bytes_read) => ScanResult::Some(buffer[0]),
+            std::io::Result::Err(err) => ScanResult::Error(ScannerError::from(err))
         }
     }
 
-    fn take_peek_result(&mut self) -> Option<u8> {
-        let t = self.peeked_result;
-        self.peeked_result = None;
-        t
+    fn read_byte(&mut self) -> ScanResult<u8> {
+        match self.peeked_result.clone() {
+            ScanResult::Some(byte) => {
+                self.peeked_result = ScanResult::None;
+                return ScanResult::Some(byte);
+            }
+            ScanResult::None => self.read_byte_from_buffer(),
+            other => other
+        }
     }
 
-    fn peek_byte(&mut self) -> Option<u8> {
-        // Return either the currently cached peeked byte or obtain a new one
-        // from the underlying reader.
-        match self.peeked_result {
-            Some(ref old_res) => Some(old_res.clone()),
-            None => {
+    fn read_char(&mut self) -> ScanResult<char> {
+        match self.read_byte() {
+            ScanResult::Some(value) => ScanResult::Some(value as char),
+            ScanResult::Error(err) => ScanResult::Error(err),
+            ScanResult::None => ScanResult::None,
+        }
+    }
+
+    fn read_token(&mut self) -> ScanResult<Token> {
+        let mut result: Option<Token> = None;
+
+        while result.is_none() {
+            match self.read_char() {
+                ScanResult::None => return ScanResult::None,
+                ScanResult::Error(err) => return ScanResult::Error(err),
+                ScanResult::Some(char)  if self.ignore(char) => {}
+                ScanResult::Some(char) => return ScanResult::Some(Token::from(char))
+            }
+        }
+
+        match result {
+            Some(token) => ScanResult::Some(token),
+            None => ScanResult::None,
+        }
+    }
+
+    fn peek_byte(&mut self) -> ScanResult<u8> {
+        match self.peeked_result.clone() {
+            ScanResult::Some(t) => ScanResult::Some(t),
+            ScanResult::None => {
                 // First get the result of the read from the underlying reader
-                self.peeked_result = self.read_byte_from_buffer().unwrap();
+                self.peeked_result = self.read_byte_from_buffer();
 
                 // Now just return that
-                self.peeked_result
+                self.peeked_result.clone()
             }
+            other => other
+        }
+    }
+
+    fn clear_peek_result(&mut self) {
+        self.peeked_result = ScanResult::None;
+    }
+
+    fn peek_char(&mut self) -> ScanResult<char> {
+        match self.peek_byte() {
+            ScanResult::Some(value) => ScanResult::Some(value as char),
+            ScanResult::Error(err) => ScanResult::Error(err),
+            ScanResult::None => ScanResult::None,
+        }
+    }
+
+    fn read_int_lit_token(&mut self, token: Token) -> Token {
+        let mut result = token;
+
+        while let ScanResult::Some(next_token) = self.peek_token() {
+            match next_token.token {
+                Token::Intlit(v) => {
+                    self.clear_peek_result();
+                    result.int_value = (result.int_value * 10) + next_token.int_value;
+                }
+                other => break
+            }
+        };
+
+        return result
+    }
+
+    fn peek_token(&mut self) -> ScanResult<Token> {
+        match self.read_char() {
+            ScanResult::None => return ScanResult::None,
+            ScanResult::Error(err) => return ScanResult::Error(err),
+            ScanResult::Some(char)  if self.ignore(char) => ScanResult::None,
+            ScanResult::Some(char) => ScanResult::Some(Token::from(char))
         }
     }
 }
@@ -132,31 +198,16 @@ impl ScannerIterator {
 impl Iterator for ScannerIterator {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
-        while let Some(byte) = self.read_byte().unwrap() {
-            if let Some(mut token) = self.scan_token(byte as char) {
-                match token.token {
-                    TokenType::Intlit => {
-                        let mut next_token = match self.peek_byte() {
-                            Some(next_byte) => self.scan_token(next_byte as char),
-                            None => None
-                        };
-                        while next_token.is_some() && next_token.unwrap().token == TokenType::Intlit {
-                            self.take_peek_result();
-                            token.int_value = (token.int_value * 10) + next_token.unwrap().int_value;
-                            next_token = match self.peek_byte() {
-                                Some(next_byte) => self.scan_token(next_byte as char),
-                                None => None
-                            };
-                        }
+        let token = self.read_token();
 
-                        return Some(token);
-                    }
-                    other => return Some(token)
-                }
+        match token {
+            ScanResult::Some(token) if token.token == TokenType::Intlit => {
+                Some(self.read_int_lit_token(token))
             }
-        };
-
-        None
+            ScanResult::Some(token) => Some(token),
+            ScanResult::Error(err) => panic!(err),
+            ScanResult::None => None,
+        }
     }
 }
 

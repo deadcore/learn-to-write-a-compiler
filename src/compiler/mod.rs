@@ -10,7 +10,7 @@ use log::info;
 use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpreamble, cgsub, cgpostamble, cgprintint};
 use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
-use crate::scanner::{Precedence, Scanner, Token, TokenType};
+use crate::scanner::{Precedence, Scanner, Token};
 use std::fs::File;
 
 /// An error as returned by a `Handler` method.
