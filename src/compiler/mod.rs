@@ -58,7 +58,7 @@ impl Compiler {
             (Some(left), AstnodeType::Subtract, Some(right)) => cgsub(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
             (Some(left), AstnodeType::Multiply, Some(right)) => cgmul(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
             (Some(left), AstnodeType::Divide, Some(right)) => cgdiv(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
-            (l, AstnodeType::Intlit, r) => cgload(ast.int_value, registers, w),
+            (l, AstnodeType::Intlit(i), r) => cgload(i, registers, w),
             _ => panic!("Unhandled")
         };
     }
@@ -81,14 +81,14 @@ impl Compiler {
             AstnodeType::Subtract => leftval - rightval,
             AstnodeType::Multiply => leftval * rightval,
             AstnodeType::Divide => leftval / rightval,
-            AstnodeType::Intlit => ast.int_value,
+            AstnodeType::Intlit(i) => i,
         };
     }
 
     fn compile_primary_ast(&self, position: usize, tokens: &[Token]) -> ASTNode {
         let token = tokens[position];
-        match token.token {
-            TokenType::Intlit => ASTNode::new_leaf(AstnodeType::Intlit, token.int_value),
+        match token {
+            Token::Intlit(v) => ASTNode::new_leaf(AstnodeType::Intlit(v)),
             tkn => panic!("syntax error on")
         }
     }
@@ -106,16 +106,16 @@ impl Compiler {
 
         let mut token = tokens[position_location];
 
-        while token.token.precedence() > ptp {
+        while token.precedence() > ptp {
             // Recursively call binexpr() with the
             // precedence of our token to build a sub-tree
-            let (right, new_position_location) = self.compile_loop(token.token.precedence(), position_location + 1, tokens);
+            let (right, new_position_location) = self.compile_loop(token.precedence(), position_location + 1, tokens);
 
             position_location = new_position_location;
 
             // Join that sub-tree with ours. Convert the token
             // into an AST operation at the same time.
-            left = ASTNode::new_node(AstnodeType::from(token.token), left, right, 0);
+            left = ASTNode::new_node(AstnodeType::from(token), left, right);
             token = tokens[new_position_location];
         }
 

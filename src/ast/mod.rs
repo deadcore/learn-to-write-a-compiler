@@ -18,57 +18,47 @@ pub struct ASTNode {
     pub right: Option<Box<ASTNode>>,
 }
 
-impl From<TokenType> for AstnodeType {
-    fn from(token_type: TokenType) -> Self {
-        match token_type {
-            TokenType::Plus => AstnodeType::Add,
-            TokenType::Minus => AstnodeType::Subtract,
-            TokenType::Star => AstnodeType::Multiply,
-            TokenType::Slash => AstnodeType::Divide,
-            TokenType::Intlit => AstnodeType::Intlit
+impl From<Token> for AstnodeType {
+    fn from(token: Token) -> Self {
+        match token {
+            Token::Plus => AstnodeType::Add,
+            Token::Minus => AstnodeType::Subtract,
+            Token::Star => AstnodeType::Multiply,
+            Token::Slash => AstnodeType::Divide,
+            Token::Intlit(v) => AstnodeType::Intlit(v)
         }
     }
 }
 
 impl ASTNode {
-    pub fn new_leaf(op: AstnodeType, int_value: i32) -> ASTNode {
-        ASTNode::new(op, None, None, int_value)
+    pub fn new_leaf(op: AstnodeType) -> ASTNode {
+        ASTNode::new(op, None, None)
     }
 
     pub fn new_node(
         op: AstnodeType,
         left: ASTNode,
         right: ASTNode,
-        int_value: i32,
     ) -> ASTNode {
-        ASTNode::new(op,
-                     Some(Box::new(left)),
-                     Some(Box::new(right)),
-                     int_value)
+        ASTNode::new(op, Some(Box::new(left)), Some(Box::new(right)))
     }
 
     pub fn new_unary(
         op: AstnodeType,
-        int_value: i32,
         left: Option<ASTNode>,
     ) -> ASTNode {
-        ASTNode::new(op,
-                     left.map(|x| Box::new(x)),
-                     None,
-                     int_value)
+        ASTNode::new(op, left.map(|x| Box::new(x)), None)
     }
 
     fn new(
         op: AstnodeType,
         left: Option<Box<ASTNode>>,
         right: Option<Box<ASTNode>>,
-        int_value: i32,
     ) -> ASTNode {
         ASTNode {
             op,
             left,
             right,
-            int_value,
         }
     }
 }

@@ -61,14 +61,14 @@ pub trait Precedence {
     fn precedence(&self) -> u32;
 }
 
-impl Precedence for TokenType {
+impl Precedence for Token {
     fn precedence(&self) -> u32 {
         match self {
             Token::Plus => 10,
             Token::Minus => 10,
             Token::Star => 20,
             Token::Slash => 20,
-            Token::Intlit => 0,
+            Token::Intlit(_) => 0,
         }
     }
 }
@@ -169,20 +169,20 @@ impl ScannerIterator {
         }
     }
 
-    fn read_int_lit_token(&mut self, token: Token) -> Token {
+    fn read_int_lit_token(&mut self, token: i32) -> Token {
         let mut result = token;
 
         while let ScanResult::Some(next_token) = self.peek_token() {
-            match next_token.token {
+            match next_token {
                 Token::Intlit(v) => {
                     self.clear_peek_result();
-                    result.int_value = (result.int_value * 10) + next_token.int_value;
+                    result = (result * 10) + v;
                 }
                 other => break
             }
         };
 
-        return result
+        return Token::Intlit(result);
     }
 
     fn peek_token(&mut self) -> ScanResult<Token> {
@@ -201,9 +201,7 @@ impl Iterator for ScannerIterator {
         let token = self.read_token();
 
         match token {
-            ScanResult::Some(token) if token.token == TokenType::Intlit => {
-                Some(self.read_int_lit_token(token))
-            }
+            ScanResult::Some(Token::Intlit(v)) => Some(self.read_int_lit_token(v)),
             ScanResult::Some(token) => Some(token),
             ScanResult::Error(err) => panic!(err),
             ScanResult::None => None,

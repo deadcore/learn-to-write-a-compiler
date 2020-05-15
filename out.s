@@ -20,8 +20,8 @@ printint:
 _main:
 	pushq	%rbp
 	movq	%rsp, %rbp
-	movq	$2, %r8
-	movq	$3, %r9
+	movq	$21, %r8
+	movq	$13, %r9
 	movq	$5, %r10
 	imulq	%r9, %r10
 	addq	%r8, %r10
