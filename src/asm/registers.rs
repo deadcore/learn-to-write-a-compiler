@@ -1,5 +1,4 @@
 use std::fmt;
-use std::io::{BufWriter, Write};
 
 #[derive(Clone, Copy)]
 pub struct RegisterIndex(pub u32);

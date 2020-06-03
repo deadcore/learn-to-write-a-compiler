@@ -1,5 +1,4 @@
-use std::fmt;
-use std::io::{BufWriter, Write};
+use std::io::Write;
 
 use crate::asm::registers::{RegisterIndex, Registers};
 

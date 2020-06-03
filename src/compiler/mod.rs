@@ -1,18 +1,14 @@
-use std::borrow::BorrowMut;
 use std::fs;
-use std::io::{self, Stdout, Write, BufReader, BufRead};
-use std::iter::Peekable;
-use std::slice::Iter;
+use std::fs::File;
+use std::io::Write;
+use std::str::Chars;
 
 use clap::ArgMatches;
-use log::info;
 
-use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpreamble, cgsub, cgpostamble, cgprintint};
+use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpostamble, cgpreamble, cgprintint, cgsub};
 use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::scanner::{Precedence, Scanner, Token};
-use std::fs::File;
-use std::str::Chars;
 
 /// An error as returned by a `Handler` method.
 #[derive(Debug)]
@@ -62,7 +58,7 @@ impl Compiler {
             (Some(left), AstnodeType::Subtract, Some(right)) => cgsub(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
             (Some(left), AstnodeType::Multiply, Some(right)) => cgmul(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
             (Some(left), AstnodeType::Divide, Some(right)) => cgdiv(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
-            (l, AstnodeType::Intlit(i), r) => cgload(i, registers, w),
+            (_, AstnodeType::Intlit(i), _) => cgload(i, registers, w),
             _ => panic!("Unhandled")
         };
     }
@@ -93,7 +89,7 @@ impl Compiler {
         let token = tokens[position];
         match token {
             Token::U32(v) => ASTNode::new_leaf(AstnodeType::Intlit(v)),
-            tkn => panic!("syntax error on")
+            tkn => panic!("syntax error with token: {:?}", tkn)
         }
     }
 
@@ -127,7 +123,7 @@ impl Compiler {
     }
 
     fn compile_to_ast(&self, tokens: &[Token]) -> ASTNode {
-        let (ast, location) = self.compile_loop(0, 0, tokens);
+        let (ast, _) = self.compile_loop(0, 0, tokens);
         ast
     }
 }

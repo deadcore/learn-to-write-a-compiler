@@ -3,8 +3,6 @@ extern crate clap;
 
 use learn_to_write_a_compiler::compiler::Result;
 use learn_to_write_a_compiler::compiler::Compiler;
-use std::fs;
-use std::str::Chars;
 
 fn main() -> Result<()> {
     env_logger::init();

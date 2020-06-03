@@ -1,10 +1,7 @@
-use clap::ArgMatches;
-use std::fs;
+use std::iter::Peekable;
 use std::str::Chars;
-use std::io::{BufReader, Read, BufRead};
-use std::fs::File;
-use std::io::Result;
-use std::iter::{Scan, Peekable, Fuse};
+
+use clap::ArgMatches;
 
 #[derive(Debug, Clone)]
 pub enum ScannerError {
@@ -38,13 +35,6 @@ impl std::convert::From<char> for Token {
             v => panic!("Unable to handle {}", v)
         }
     }
-}
-
-#[derive(Debug, Clone)]
-enum ScanResult<T> {
-    Some(T),
-    None,
-    Error(ScannerError),
 }
 
 
