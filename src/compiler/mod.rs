@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 use std::fs;
-use std::io::{self, Stdout, Write};
+use std::io::{self, Stdout, Write, BufReader, BufRead};
 use std::iter::Peekable;
 use std::slice::Iter;
 
@@ -12,6 +12,7 @@ use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::scanner::{Precedence, Scanner, Token};
 use std::fs::File;
+use std::str::Chars;
 
 /// An error as returned by a `Handler` method.
 #[derive(Debug)]
@@ -37,7 +38,10 @@ impl Compiler {
     }
 
     pub fn compile(&self, filename: &str) -> Result<()> {
-        let tokens: Vec<Token> = self.scanner.new_iterator(filename).collect();
+        let content = fs::read_to_string(filename).unwrap(); // FIXME
+        let chars: Chars = content.chars();
+
+        let tokens: Vec<Token> = self.scanner.new_iterator(chars).collect();
 
         let ast = self.compile_to_ast(&tokens);
 
@@ -63,7 +67,7 @@ impl Compiler {
         };
     }
 
-    fn interpret_ast(&self, ast: ASTNode) -> i32 {
+    fn interpret_ast(&self, ast: ASTNode) -> u32 {
         let mut leftval = 0;
         let mut rightval = 0;
 
@@ -88,7 +92,7 @@ impl Compiler {
     fn compile_primary_ast(&self, position: usize, tokens: &[Token]) -> ASTNode {
         let token = tokens[position];
         match token {
-            Token::Intlit(v) => ASTNode::new_leaf(AstnodeType::Intlit(v)),
+            Token::U32(v) => ASTNode::new_leaf(AstnodeType::Intlit(v)),
             tkn => panic!("syntax error on")
         }
     }

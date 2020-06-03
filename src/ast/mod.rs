@@ -7,7 +7,7 @@ pub enum AstnodeType {
     Subtract,
     Multiply,
     Divide,
-    Intlit(i32),
+    Intlit(u32),
 }
 
 // Abstract Syntax Tree structure
@@ -25,7 +25,8 @@ impl From<Token> for AstnodeType {
             Token::Minus => AstnodeType::Subtract,
             Token::Star => AstnodeType::Multiply,
             Token::Slash => AstnodeType::Divide,
-            Token::Intlit(v) => AstnodeType::Intlit(v)
+            Token::U32(v) => AstnodeType::Intlit(v),
+            _ => panic!("Error") // FIXME
         }
     }
 }

@@ -63,7 +63,7 @@ pub fn cgpostamble<W: Write>(mut out: W) {
     writeln!(out, "\tret");
 }
 
-pub fn cgload<W: Write>(value: i32, registers: &mut Registers, mut out: W) -> RegisterIndex {
+pub fn cgload<W: Write>(value: u32, registers: &mut Registers, mut out: W) -> RegisterIndex {
     let r = registers.allocate_register();
     writeln!(out, "\tmovq\t${}, {}", value, r.name());
     return r;
