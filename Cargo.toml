@@ -9,10 +9,10 @@ edition = "2018"
 [dependencies]
 log = "^0.4"
 env_logger = "^0.7"
-clap = "^2"
+clap = "3.0.0-beta.1"
 indextree = "4.0.0"
 char_stream = "*"
 
 [[bin]]
 name = 'compiler'
-path = 'src/bin/compiler.rs'
+path = 'src/bin/main.rs'

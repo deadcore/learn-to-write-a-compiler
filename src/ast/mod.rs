@@ -1,65 +1,88 @@
-use crate::scanner::Token;
+use crate::scanner::{Token, KeywordToken};
 
-// AST node types
-#[derive(Debug)]
-pub enum AstnodeType {
+#[derive(Debug, PartialEq, Clone)]
+pub enum AbstractSyntaxTreeNode {
+    Unary(AbstractSyntaxTreeUnaryNodeType, Box<AbstractSyntaxTreeNode>),
+    Interior(AbstractSyntaxTreeInteriorNodeType, Box<AbstractSyntaxTreeNode>, Box<AbstractSyntaxTreeNode>),
+    Leaf(AbstractSyntaxTreeLeafNodeType),
+    Construct(AbstractSyntaxTreeConstructNode),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum AbstractSyntaxTreeConstructNode {
+    StatementSequence(Vec<AbstractSyntaxTreeNode>)
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum AbstractSyntaxTreeInteriorNodeType {
     Add,
     Subtract,
     Multiply,
     Divide,
-    Intlit(u32),
+    Assignment,
 }
 
-// Abstract Syntax Tree structure
-#[derive(Debug)]
-pub struct ASTNode {
-    pub op: AstnodeType,
-    pub left: Option<Box<ASTNode>>,
-    pub right: Option<Box<ASTNode>>,
+#[derive(Debug, PartialEq, Clone)]
+pub enum AbstractSyntaxTreeLeafNodeType {
+    U32(u32),
+    SemiColon,
+    Identifier(String),
 }
 
-impl From<Token> for AstnodeType {
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum AbstractSyntaxTreeUnaryNodeType {
+    Print
+}
+
+impl From<Token> for AbstractSyntaxTreeLeafNodeType {
     fn from(token: Token) -> Self {
         match token {
-            Token::Plus => AstnodeType::Add,
-            Token::Minus => AstnodeType::Subtract,
-            Token::Star => AstnodeType::Multiply,
-            Token::Slash => AstnodeType::Divide,
-            Token::U32(v) => AstnodeType::Intlit(v),
-            _ => panic!("Error") // FIXME
+            Token::U32(v) => AbstractSyntaxTreeLeafNodeType::U32(v),
+            Token::Identifier(v) => AbstractSyntaxTreeLeafNodeType::Identifier(v),
+            unhandled => panic!("Unable to convert {:?} to an [AbstractSyntaxTreeLeafNodeType]", unhandled)
         }
     }
 }
 
-impl ASTNode {
-    pub fn new_leaf(op: AstnodeType) -> ASTNode {
-        ASTNode::new(op, None, None)
-    }
-
-    pub fn new_node(
-        op: AstnodeType,
-        left: ASTNode,
-        right: ASTNode,
-    ) -> ASTNode {
-        ASTNode::new(op, Some(Box::new(left)), Some(Box::new(right)))
-    }
-
-    pub fn new_unary(
-        op: AstnodeType,
-        left: Option<ASTNode>,
-    ) -> ASTNode {
-        ASTNode::new(op, left.map(|x| Box::new(x)), None)
-    }
-
-    fn new(
-        op: AstnodeType,
-        left: Option<Box<ASTNode>>,
-        right: Option<Box<ASTNode>>,
-    ) -> ASTNode {
-        ASTNode {
-            op,
-            left,
-            right,
+impl From<KeywordToken> for AbstractSyntaxTreeUnaryNodeType {
+    fn from(token: KeywordToken) -> Self {
+        match token {
+            KeywordToken::Print => AbstractSyntaxTreeUnaryNodeType::Print,
+            unhandled => panic!("Unable to convert {:?} to an [AbstractSyntaxTreeUnaryNodeType]", unhandled)
         }
+    }
+}
+
+
+impl From<Token> for AbstractSyntaxTreeInteriorNodeType {
+    fn from(token: Token) -> Self {
+        match token {
+            Token::Plus => AbstractSyntaxTreeInteriorNodeType::Add,
+            Token::Minus => AbstractSyntaxTreeInteriorNodeType::Subtract,
+            Token::Star => AbstractSyntaxTreeInteriorNodeType::Multiply,
+            Token::Slash => AbstractSyntaxTreeInteriorNodeType::Divide,
+            unhandled => panic!("Unable to convert {:?} to an [AbstractSyntaxTreeInteriorNodeType]", unhandled)
+        }
+    }
+}
+
+impl AbstractSyntaxTreeNode {
+    pub fn new_leaf_node(op: AbstractSyntaxTreeLeafNodeType) -> AbstractSyntaxTreeNode {
+        AbstractSyntaxTreeNode::Leaf(op)
+    }
+
+    pub fn new_interior_node(
+        op: AbstractSyntaxTreeInteriorNodeType,
+        left: AbstractSyntaxTreeNode,
+        right: AbstractSyntaxTreeNode,
+    ) -> AbstractSyntaxTreeNode {
+        AbstractSyntaxTreeNode::Interior(op, Box::new(left), Box::new(right))
+    }
+
+    pub fn new_unary_node(
+        op: AbstractSyntaxTreeUnaryNodeType,
+        left: AbstractSyntaxTreeNode,
+    ) -> AbstractSyntaxTreeNode {
+        AbstractSyntaxTreeNode::Unary(op, Box::new(left))
     }
 }

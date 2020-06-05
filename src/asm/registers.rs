@@ -38,6 +38,12 @@ impl Registers {
 
         self.freereg[register.0 as usize] = true;
     }
+
+    pub fn free_all(&mut self) {
+        for i in 0..REGISTER_COUNT {
+            self.freereg[i] = true;
+        }
+    }
 }
 
 impl RegisterIndex {

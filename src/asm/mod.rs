@@ -68,14 +68,8 @@ pub fn cgload<W: Write>(value: u32, registers: &mut Registers, mut out: W) -> Re
     return r;
 }
 
-pub fn cgprintint<W: Write>(r: RegisterIndex, mut out: W) {
+pub fn cgprintint<W: Write>(r: RegisterIndex, mut out: W) -> RegisterIndex {
     writeln!(out, "\tmovq\t{},%rdi", r.name());
     writeln!(out, "\tcall\tprintint");
+    return r;
 }
-
-// Call printint() with the given register
-// void cgprintint(int r) {
-// fprintf(Outfile, "\tmovq\t%s, %%rdi\n", reglist[r]);
-// fprintf(Outfile, "\tcall\tprintint\n");
-// free_register(r);
-// }

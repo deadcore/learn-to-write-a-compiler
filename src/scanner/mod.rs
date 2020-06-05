@@ -1,7 +1,8 @@
+use std::convert::TryFrom;
 use std::iter::Peekable;
 use std::str::Chars;
 
-use clap::ArgMatches;
+use log::{debug, trace};
 
 #[derive(Debug, Clone)]
 pub enum ScannerError {
@@ -21,24 +22,17 @@ impl std::convert::From<char> for Token {
             '-' => Token::Minus,
             '*' => Token::Star,
             '/' => Token::Slash,
-            '0' => Token::U32(0),
-            '1' => Token::U32(1),
-            '2' => Token::U32(2),
-            '3' => Token::U32(3),
-            '4' => Token::U32(4),
-            '5' => Token::U32(5),
-            '6' => Token::U32(6),
-            '7' => Token::U32(7),
-            '8' => Token::U32(8),
-            '9' => Token::U32(9),
             ';' => Token::SemiColon,
-            v => panic!("Unable to handle {}", v)
+            '=' => Token::Assignment,
+            '\n' => Token::NewLine,
+            ' ' => Token::Space,
+            v => panic!("Unable to handle token: [{}]", v)
         }
     }
 }
 
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Plus,
     Minus,
@@ -46,6 +40,29 @@ pub enum Token {
     Slash,
     U32(u32),
     SemiColon,
+    Keyword(KeywordToken),
+    Space,
+    Identifier(String),
+    Assignment,
+    NewLine
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum KeywordToken {
+    Print,
+    Int,
+}
+
+impl std::convert::TryFrom<&str> for KeywordToken {
+    type Error = String;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "print" => Ok(KeywordToken::Print),
+            "int" => Ok(KeywordToken::Int),
+            v => Err(format!("Unable to handle KeywordToken: [{}]", value))
+        }
+    }
 }
 
 pub trait Precedence {
@@ -66,13 +83,13 @@ impl Precedence for Token {
 
 pub struct Scanner {}
 
-pub struct ScannerIterator<'a> {
-    inner: Peekable<Chars<'a>>,
+pub struct TokenIterator<T: Iterator<Item=char>> {
+    inner: Peekable<T>,
 }
 
-impl<'a> ScannerIterator<'a> {
-    fn new(inner: Peekable<Chars<'a>>) -> Self {
-        ScannerIterator { inner }
+impl<T: Iterator<Item=char>> TokenIterator<T> {
+    fn new(inner: Peekable<T>) -> Self {
+        TokenIterator { inner }
     }
 
     fn ignore(&self, value: char) -> bool {
@@ -80,46 +97,63 @@ impl<'a> ScannerIterator<'a> {
     }
 
     fn read_token(&mut self) -> Option<Token> {
-        while let Some(c) = self.inner.next() {
-            if !self.ignore(c) {
-                if c.is_digit(10) {
-                    return Some(self.read_int_lit_token(c.to_digit(10).unwrap()));
-                }
-
-                return Some(Token::from(c));
+        if let Some(&c) = self.inner.peek() {
+            if c.is_digit(10) {
+                return self.read_int_lit_token();
             }
+            if c.is_alphabetic() {
+                return self.read_alphbetic_token();
+            }
+            return self.read_symbol();
         }
 
         return None;
     }
 
+    fn read_symbol(&mut self) -> Option<Token> {
+        if let Some(t) = self.inner.next() {
+            return Some(Token::from(t));
+        }
+        panic!("Error - Received no token but expected a whitespace")
+    }
 
-    fn read_int_lit_token(&mut self, token: u32) -> Token {
-        let mut result = token;
+    fn read_alphbetic_token(&mut self) -> Option<Token> {
+        let mut result = String::new();
+        while self.inner.peek().map_or_else(|| false, |x| x.is_alphanumeric()) {
+            let next = self.inner.next().unwrap();
+            result.push(next)
+        }
+
+        match KeywordToken::try_from(result.as_str()) {
+            Ok(v) => Some(Token::Keyword(v)),
+            Err(v) => Some(Token::Identifier(result)),
+        }
+    }
+
+    fn read_int_lit_token(&mut self) -> Option<Token> {
+        let mut result = 0;
 
         while self.inner.peek().map_or_else(|| false, |x| x.is_digit(10)) {
             let next = self.inner.next().unwrap();
-            if next.is_digit(10) {
-                result = (result * 10) + next.to_digit(10).unwrap()
-            } else {
-                return Token::U32(result);
-            }
+            result = (result * 10) + next.to_digit(10).unwrap()
         }
 
-        return Token::U32(result);
+        return Some(Token::U32(result));
     }
 }
 
-impl<'a> Iterator for ScannerIterator<'a> {
+impl<T: Iterator<Item=char>> Iterator for TokenIterator<T> {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
-        return self.read_token();
+        let token = self.read_token();
+        trace!("Token: {:?}", token);
+        return token;
     }
 }
 
 
 impl Scanner {
-    pub fn from_arg_matches(_arg_matches: &ArgMatches) -> Scanner {
+    pub fn from_arg_matches() -> Scanner {
         Scanner::new()
     }
 
@@ -127,8 +161,8 @@ impl Scanner {
         Scanner {}
     }
 
-    pub fn new_iterator<'a>(&self, chars: Chars<'a>) -> ScannerIterator<'a> {
-        ScannerIterator::new(chars.peekable())
+    pub fn new_iterator<T: Iterator<Item=char>>(&self, chars: T) -> TokenIterator<T> {
+        TokenIterator::new(chars.peekable())
     }
 }
 
