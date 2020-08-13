@@ -1,6 +1,6 @@
 use std::fmt;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct RegisterIndex(pub u32);
 
 const REGISTER_COUNT: usize = 4;
@@ -9,7 +9,7 @@ const REGISTERS: [&str; REGISTER_COUNT] = [
     "%r8", "%r9", "%r10", "%r11"
 ];
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub struct Registers {
     freereg: [bool; REGISTER_COUNT]
 }

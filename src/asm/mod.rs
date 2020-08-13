@@ -31,8 +31,13 @@ pub fn cgdiv<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Reg
     return r1;
 }
 
-// Print out the assembly preamble
+
+pub fn cgcomment<W: Write>(mut out: W, comment: &str) {
+    writeln!(out, "\t# {}", comment);
+}
+
 pub fn cgpreamble<W: Write>(mut out: W) {
+    writeln!(out, "\t# Start of preamble");
     writeln!(out, "\t.text");
     writeln!(out, ".LC0:");
     writeln!(out, "\t.string\t\"%d\\n\"\n");
@@ -49,17 +54,17 @@ pub fn cgpreamble<W: Write>(mut out: W) {
     writeln!(out, "\tnop");
     writeln!(out, "\tleave");
     writeln!(out, "\tret");
-    writeln!(out, "");
     writeln!(out, "\t.globl\t_main");
     writeln!(out, "_main:");
     writeln!(out, "\tpushq\t%rbp");
     writeln!(out, "\tmovq\t%rsp, %rbp");
+    writeln!(out, "\t# End of preamble");
 }
 
 pub fn cgpostamble<W: Write>(mut out: W) {
-    writeln!(out, "\tmovl	$0, %eax");
+    writeln!(out, "\tmovl	$0, %eax             # Start of postamble");
     writeln!(out, "\tpopq	%rbp");
-    writeln!(out, "\tret");
+    writeln!(out, "\tret                         # End of postamble");
 }
 
 pub fn cgload<W: Write>(value: u32, registers: &mut Registers, mut out: W) -> RegisterIndex {
@@ -68,8 +73,28 @@ pub fn cgload<W: Write>(value: u32, registers: &mut Registers, mut out: W) -> Re
     return r;
 }
 
-pub fn cgprintint<W: Write>(r: RegisterIndex, mut out: W) -> RegisterIndex {
+pub fn cgprintint<W: Write>(r: RegisterIndex, mut out: W) {
     writeln!(out, "\tmovq\t{},%rdi", r.name());
     writeln!(out, "\tcall\tprintint");
+}
+
+pub fn cgglobsym<W: Write>(sym: &str, out: &mut W) {
+    writeln!(out, "\t.comm\t{},8,8", sym);
+}
+
+// Similarly, we need a function to save a register into a variable:
+pub fn cgstorglob<W: Write>(sym: &str, r: RegisterIndex, out: &mut W) -> RegisterIndex {
+    writeln!(out, "\tmovq\t{}, {}(%rip)\n", r.name(), sym);
+    return r;
+}
+
+// You would have noticed that I changed the name of the old cgload() function to cgloadint().
+// This is more specific. We now have a function to load the value out of a global variable (in cg.c):
+pub fn cgloadglob<W: Write>(sym: &str, registers: &mut Registers, mut out: W) -> RegisterIndex {
+    // Get a new register
+    let r = registers.allocate_register();
+
+    // Print out the code to initialise it
+    writeln!(out, "\tmovq\t{}(%rip), {}\n", sym, r.name());
     return r;
 }

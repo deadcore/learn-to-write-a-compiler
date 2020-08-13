@@ -2,19 +2,19 @@ use crate::scanner::{Token, KeywordToken};
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum AbstractSyntaxTreeNode {
-    Unary(AbstractSyntaxTreeUnaryNodeType, Box<AbstractSyntaxTreeNode>),
-    Interior(AbstractSyntaxTreeInteriorNodeType, Box<AbstractSyntaxTreeNode>, Box<AbstractSyntaxTreeNode>),
+    Construct(AbstractSyntaxTreeConstructNodeType, Box<AbstractSyntaxTreeNode>),
+    Expression(AbstractSyntaxTreeExpressionNodeType, Box<AbstractSyntaxTreeNode>, Box<AbstractSyntaxTreeNode>),
     Leaf(AbstractSyntaxTreeLeafNodeType),
-    Construct(AbstractSyntaxTreeConstructNode),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum AbstractSyntaxTreeConstructNode {
-    StatementSequence(Vec<AbstractSyntaxTreeNode>)
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
-pub enum AbstractSyntaxTreeInteriorNodeType {
+pub enum AbstractSyntaxTreeConstructNodeType {
+    Print,
+    Declaration,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum AbstractSyntaxTreeExpressionNodeType {
     Add,
     Subtract,
     Multiply,
@@ -29,10 +29,6 @@ pub enum AbstractSyntaxTreeLeafNodeType {
     Identifier(String),
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub enum AbstractSyntaxTreeUnaryNodeType {
-    Print
-}
 
 impl From<Token> for AbstractSyntaxTreeLeafNodeType {
     fn from(token: Token) -> Self {
@@ -44,23 +40,23 @@ impl From<Token> for AbstractSyntaxTreeLeafNodeType {
     }
 }
 
-impl From<KeywordToken> for AbstractSyntaxTreeUnaryNodeType {
+impl From<KeywordToken> for AbstractSyntaxTreeConstructNodeType {
     fn from(token: KeywordToken) -> Self {
         match token {
-            KeywordToken::Print => AbstractSyntaxTreeUnaryNodeType::Print,
+            KeywordToken::Print => AbstractSyntaxTreeConstructNodeType::Print,
             unhandled => panic!("Unable to convert {:?} to an [AbstractSyntaxTreeUnaryNodeType]", unhandled)
         }
     }
 }
 
 
-impl From<Token> for AbstractSyntaxTreeInteriorNodeType {
+impl From<Token> for AbstractSyntaxTreeExpressionNodeType {
     fn from(token: Token) -> Self {
         match token {
-            Token::Plus => AbstractSyntaxTreeInteriorNodeType::Add,
-            Token::Minus => AbstractSyntaxTreeInteriorNodeType::Subtract,
-            Token::Star => AbstractSyntaxTreeInteriorNodeType::Multiply,
-            Token::Slash => AbstractSyntaxTreeInteriorNodeType::Divide,
+            Token::Plus => AbstractSyntaxTreeExpressionNodeType::Add,
+            Token::Minus => AbstractSyntaxTreeExpressionNodeType::Subtract,
+            Token::Star => AbstractSyntaxTreeExpressionNodeType::Multiply,
+            Token::Slash => AbstractSyntaxTreeExpressionNodeType::Divide,
             unhandled => panic!("Unable to convert {:?} to an [AbstractSyntaxTreeInteriorNodeType]", unhandled)
         }
     }
@@ -71,18 +67,18 @@ impl AbstractSyntaxTreeNode {
         AbstractSyntaxTreeNode::Leaf(op)
     }
 
-    pub fn new_interior_node(
-        op: AbstractSyntaxTreeInteriorNodeType,
+    pub fn new_interior(
+        op: AbstractSyntaxTreeExpressionNodeType,
         left: AbstractSyntaxTreeNode,
         right: AbstractSyntaxTreeNode,
     ) -> AbstractSyntaxTreeNode {
-        AbstractSyntaxTreeNode::Interior(op, Box::new(left), Box::new(right))
+        AbstractSyntaxTreeNode::Expression(op, Box::new(left), Box::new(right))
     }
 
-    pub fn new_unary_node(
-        op: AbstractSyntaxTreeUnaryNodeType,
+    pub fn new_construct(
+        op: AbstractSyntaxTreeConstructNodeType,
         left: AbstractSyntaxTreeNode,
     ) -> AbstractSyntaxTreeNode {
-        AbstractSyntaxTreeNode::Unary(op, Box::new(left))
+        AbstractSyntaxTreeNode::Construct(op, Box::new(left))
     }
 }

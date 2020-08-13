@@ -1,2 +1,4 @@
-print 20 * 10 + 10;
-print 5 + 5*10;
+int fred = 5;
+int jim;
+jim = 12;
+print fred + jim;

@@ -8,12 +8,13 @@ use std::str::Chars;
 use clap::ArgMatches;
 use log::{debug, info};
 
-use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpostamble, cgpreamble, cgprintint, cgsub};
+use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpostamble, cgpreamble, cgprintint, cgsub, cgcomment, cgglobsym, cgstorglob, cgloadglob};
 use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::scanner::{Precedence, Scanner, Token};
 use crate::ast::AbstractSyntaxTreeNode;
 use crate::compiler::code_generator::CodeGenerator;
+use std::borrow::Borrow;
 
 /// An error as returned by a `Handler` method.
 #[derive(Debug)]
@@ -52,6 +53,7 @@ impl Compiler {
         let mut registers = Registers::new();
 
         cgpreamble(out.by_ref());
+        cgcomment(out.by_ref(), "Starting users code");
 
         for code in code_generator {
             debug!("Abstract Syntax Tree: {:#?}", code);
@@ -59,19 +61,100 @@ impl Compiler {
             registers.free_all();
         }
 
+        cgcomment(out.by_ref(), "Ending users code");
         cgpostamble(out.by_ref());
 
         Ok(())
     }
 
-    fn interpret_ast_to_asm(&self, w: &mut dyn Write, registers: &mut Registers, ast: AbstractSyntaxTreeNode) -> RegisterIndex {
+    fn interpret_ast_to_asm<W: Write>(&self, w: &mut W, registers: &mut Registers, ast: AbstractSyntaxTreeNode) -> Option<RegisterIndex> {
         return match ast {
-            AbstractSyntaxTreeNode::Interior(AbstractSyntaxTreeInteriorNodeType::Add, left, right) => cgadd(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
-            AbstractSyntaxTreeNode::Interior(AbstractSyntaxTreeInteriorNodeType::Subtract, left, right) => cgsub(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
-            AbstractSyntaxTreeNode::Interior(AbstractSyntaxTreeInteriorNodeType::Multiply, left, right) => cgmul(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
-            AbstractSyntaxTreeNode::Interior(AbstractSyntaxTreeInteriorNodeType::Divide, left, right) => cgdiv(self.interpret_ast_to_asm(w, registers, *left), self.interpret_ast_to_asm(w, registers, *right), registers, w),
-            AbstractSyntaxTreeNode::Leaf(AbstractSyntaxTreeLeafNodeType::U32(i)) => cgload(i, registers, w),
-            AbstractSyntaxTreeNode::Unary(AbstractSyntaxTreeUnaryNodeType::Print, left) => cgprintint(self.interpret_ast_to_asm(w, registers, *left), w),
+            AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Add, left, right) =>
+                Some(
+                    cgadd(
+                        self.interpret_ast_to_asm(w, registers, *left).expect("Expected a value to be placed in a register"),
+                        self.interpret_ast_to_asm(w, registers, *right).expect("Expected a value to be placed in a register"),
+                        registers,
+                        w,
+                    )
+                ),
+            AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Subtract, left, right) =>
+                Some(
+                    cgsub(
+                        self.interpret_ast_to_asm(w, registers, *left).expect("Expected a value to be placed in a register"),
+                        self.interpret_ast_to_asm(w, registers, *right).expect("Expected a value to be placed in a register"),
+                        registers,
+                        w,
+                    )
+                ),
+            AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Multiply, left, right) => {
+                Some(
+                    cgmul(
+                        self.interpret_ast_to_asm(w, registers, *left).expect("Expected a value to be placed in a register"),
+                        self.interpret_ast_to_asm(w, registers, *right).expect("Expected a value to be placed in a register"),
+                        registers,
+                        w,
+                    )
+                )
+            }
+            AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Divide, left, right) =>
+                Some(
+                    cgdiv(
+                        self.interpret_ast_to_asm(w, registers, *left).expect("Expected a value to be placed in a register"),
+                        self.interpret_ast_to_asm(w, registers, *right).expect("Expected a value to be placed in a register"),
+                        registers,
+                        w,
+                    )
+                ),
+            AbstractSyntaxTreeNode::Leaf(AbstractSyntaxTreeLeafNodeType::U32(i)) =>
+                Some(
+                    cgload(
+                        i,
+                        registers,
+                        w,
+                    )
+                ),
+            AbstractSyntaxTreeNode::Construct(AbstractSyntaxTreeConstructNodeType::Print, left) => {
+                cgprintint(
+                    self.interpret_ast_to_asm(w, registers, *left).expect("Expected a value to be placed in a register"),
+                    w,
+                );
+                None
+            }
+            AbstractSyntaxTreeNode::Construct(AbstractSyntaxTreeConstructNodeType::Declaration, left) => {
+                self.interpret_ast_to_asm(w, registers, *left);
+                None
+                //     None
+                //     // match *left {
+                //     //     AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeInteriorNodeType::Assignment, AbstractSyntaxTreeNode::Leaf(AbstractSyntaxTreeLeafNodeType::Identifier(identifier)), right) => {
+                //     //         cgglobsym(&identifier, w);
+                //     //         cgstorglob(
+                //     //             &identifier,
+                //     //             self.interpret_ast_to_asm(w, registers, *right).expect("Expected a value to be placed in a register"),
+                //     //             w,
+                //     //         )
+                //     //     }
+                //     //     unhandled => panic!("Unhandled abstract syntax tree element: {:?}", unhandled),
+                //     // }
+            }
+            AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Assignment, left, right) => {
+                match *left {
+                    AbstractSyntaxTreeNode::Leaf(AbstractSyntaxTreeLeafNodeType::Identifier(identifier)) => {
+                        cgglobsym(&identifier, w);
+                        let index = cgstorglob(
+                            &identifier,
+                            self.interpret_ast_to_asm(w, registers, *right).expect("Expected a value to be placed in a register"),
+                            w,
+                        );
+
+                        Some(index)
+                    }
+                    unhandled => panic!("Unhandled abstract syntax tree element: {:?}", unhandled),
+                }
+            }
+            AbstractSyntaxTreeNode::Leaf(AbstractSyntaxTreeLeafNodeType::Identifier(identifier)) => {
+                Some(cgloadglob(&identifier, registers, w))
+            }
             unhandled => panic!("Unhandled abstract syntax tree element: {:?}", unhandled),
         };
     }

@@ -44,7 +44,7 @@ pub enum Token {
     Space,
     Identifier(String),
     Assignment,
-    NewLine
+    NewLine,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -96,20 +96,6 @@ impl<T: Iterator<Item=char>> TokenIterator<T> {
         return value == ' ' || '\t' == value || '\n' == value || '\r' == value;
     }
 
-    fn read_token(&mut self) -> Option<Token> {
-        if let Some(&c) = self.inner.peek() {
-            if c.is_digit(10) {
-                return self.read_int_lit_token();
-            }
-            if c.is_alphabetic() {
-                return self.read_alphbetic_token();
-            }
-            return self.read_symbol();
-        }
-
-        return None;
-    }
-
     fn read_symbol(&mut self) -> Option<Token> {
         if let Some(t) = self.inner.next() {
             return Some(Token::from(t));
@@ -145,9 +131,18 @@ impl<T: Iterator<Item=char>> TokenIterator<T> {
 impl<T: Iterator<Item=char>> Iterator for TokenIterator<T> {
     type Item = Token;
     fn next(&mut self) -> Option<Token> {
-        let token = self.read_token();
-        trace!("Token: {:?}", token);
-        return token;
+        if let Some(&c) = self.inner.peek() {
+            debug!("Peeked a char: [{}]", c);
+            if c.is_digit(10) {
+                return self.read_int_lit_token();
+            }
+            if c.is_alphabetic() {
+                return self.read_alphbetic_token();
+            }
+            return self.read_symbol();
+        }
+
+        return None;
     }
 }
 
