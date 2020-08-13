@@ -1,13 +1,11 @@
 use std::iter::Peekable;
 
-use log::{debug, info};
+use log::debug;
 
-use crate::asm::{cgadd, cgdiv, cgload, cgmul, cgpostamble, cgpreamble, cgprintint, cgsub};
-use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::ast::AbstractSyntaxTreeNode;
-use crate::scanner::{KeywordToken, Token, TokenIterator};
-use crate::scanner::{Precedence, Scanner};
+use crate::scanner::{KeywordToken, Token};
+use crate::scanner::Precedence;
 
 pub struct CodeGenerator<T: Iterator<Item=Token>> {
     inner: Peekable<T>,
@@ -21,7 +19,7 @@ impl<T: Iterator<Item=Token>> CodeGenerator<T> {
     }
 
     fn compile_int_keyword(&mut self) -> AbstractSyntaxTreeNode {
-        let int_keyword = self.inner.next().expect("Expected int_keyword but received nothing");
+        let _int_keyword = self.inner.next().expect("Expected int_keyword but received nothing");
         let identifier = self.inner.next().expect("Expected identifier but received nothing");
         let assignment_or_semi_colon = self.inner.next().expect("Expected assignment but received nothing");
 
@@ -64,7 +62,7 @@ impl<T: Iterator<Item=Token>> CodeGenerator<T> {
 
     fn compile_identifier(&mut self) -> AbstractSyntaxTreeNode {
         let identifier = self.inner.next().expect("Expected identifier but received nothing");
-        let assignment = self.inner.next().expect("Expected assignment but received nothing");
+        let _assignment = self.inner.next().expect("Expected assignment but received nothing");
         let expression = self.compile_expression(0);
 
         AbstractSyntaxTreeNode::new_interior(
@@ -115,7 +113,10 @@ impl<T: Iterator<Item=Token>> Iterator for CodeGenerator<T> {
             match token {
                 Token::Keyword(KeywordToken::Print) => return Some(self.compile_print_keyword()),
                 Token::Keyword(KeywordToken::Int) => return Some(self.compile_int_keyword()),
-                Token::Identifier(identifier) => return Some(self.compile_identifier()),
+                Token::Identifier(identifier) => {
+                    debug!("Compiling identifier: {:?}", identifier);
+                    return Some(self.compile_identifier())
+                },
                 Token::SemiColon => { self.skip() }
                 Token::NewLine => { self.skip() }
                 Token::Assignment => { self.skip() }

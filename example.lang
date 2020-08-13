@@ -1,4 +1,11 @@
-int fred = 5;
+int middle;
 int jim;
+int fred = 5;
+int sam = 10;
+
 jim = 12;
-print fred + jim;
+middle = fred + jim;
+
+print middle;
+
+print jim * middle;

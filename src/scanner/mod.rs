@@ -1,8 +1,7 @@
 use std::convert::TryFrom;
 use std::iter::Peekable;
-use std::str::Chars;
 
-use log::{debug, trace};
+use log::debug;
 
 #[derive(Debug, Clone)]
 pub enum ScannerError {
@@ -60,7 +59,7 @@ impl std::convert::TryFrom<&str> for KeywordToken {
         match value {
             "print" => Ok(KeywordToken::Print),
             "int" => Ok(KeywordToken::Int),
-            v => Err(format!("Unable to handle KeywordToken: [{}]", value))
+            v => Err(format!("Unable to handle KeywordToken: [{}]", v))
         }
     }
 }
@@ -92,10 +91,6 @@ impl<T: Iterator<Item=char>> TokenIterator<T> {
         TokenIterator { inner }
     }
 
-    fn ignore(&self, value: char) -> bool {
-        return value == ' ' || '\t' == value || '\n' == value || '\r' == value;
-    }
-
     fn read_symbol(&mut self) -> Option<Token> {
         if let Some(t) = self.inner.next() {
             return Some(Token::from(t));
@@ -112,7 +107,10 @@ impl<T: Iterator<Item=char>> TokenIterator<T> {
 
         match KeywordToken::try_from(result.as_str()) {
             Ok(v) => Some(Token::Keyword(v)),
-            Err(v) => Some(Token::Identifier(result)),
+            Err(v) => {
+                debug!("Error while reading the keyword [{:?}], defaulting to identifier", v);
+                Some(Token::Identifier(result))
+            }
         }
     }
 

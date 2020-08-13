@@ -1,9 +1,7 @@
 use clap::Clap;
 
-use learn_to_write_a_compiler::compiler::Result;
 use learn_to_write_a_compiler::compiler::Compiler;
 use log::LevelFilter;
-use log::info;
 
 /// A NES Emulator written in rust.
 #[derive(Clap)]
@@ -30,19 +28,21 @@ pub struct Compile {
     file: String,
 }
 
-fn main() -> Result<()> {
-    env_logger::builder().init();
-
+fn main() -> core::result::Result<(), Box<dyn std::error::Error>> {
+    let mut logger = env_logger::builder();
     let opts: Opts = Opts::parse();
 
     // Vary the output based on how many times the user used the "verbose" flag
     // (i.e. 'myprog -v -v -v' or 'myprog -vvv' vs 'myprog -v'
-    match opts.verbose {
-        0 => info!("No verbose info"),
-        1 => info!("Some verbose info"),
-        2 => info!("Tons of verbose info"),
-        3 | _ => info!("Don't be crazy"),
+    if option_env!("RUST_LOG").is_none() {
+        logger.filter_level(match opts.verbose {
+            0 => LevelFilter::Info,
+            1 => LevelFilter::Debug,
+            2 | _ => LevelFilter::Trace,
+        });
     }
+
+    logger.init();
 
     // You can handle information about subcommands by requesting their matches by name
     // (as below), requesting just the name used, or both at the same time
@@ -51,7 +51,7 @@ fn main() -> Result<()> {
     }
 }
 
-fn compile(c: Compile) -> Result<()> {
+fn compile(c: Compile) -> core::result::Result<(), Box<dyn std::error::Error>> {
     let compiler = Compiler::from_arg_matches();
 
     let file = c.file.as_ref();
