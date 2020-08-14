@@ -1,9 +1,15 @@
-use clap::Clap;
+use std::fs;
+use std::fs::File;
+use std::io::Write;
 
-use learn_to_write_a_compiler::compiler::Compiler;
+use clap::Clap;
+use log::debug;
 use log::LevelFilter;
 
-/// A NES Emulator written in rust.
+use learn_to_write_a_compiler::compiler::Compiler;
+use learn_to_write_a_compiler::scanner::{Token, TokenIterator};
+
+/// A language compiler written in rust.
 #[derive(Clap)]
 #[clap(version = "1.0", author = "Jack L. <admin@deadcore.co.uk>")]
 struct Opts {
@@ -18,11 +24,20 @@ struct Opts {
 enum SubCommand {
     #[clap(version = "1.0", author = "Jack L. <admin@deadcore.co.uk>")]
     Compile(Compile),
+    #[clap(version = "1.0", author = "Jack L. <admin@deadcore.co.uk>")]
+    Print(Print),
 }
 
 /// A subcommand for controlling compiler
 #[derive(Clap)]
 pub struct Compile {
+    /// The main file to compile
+    #[clap(short, long)]
+    file: String,
+}
+
+#[derive(Clap)]
+pub struct Print {
     /// The main file to compile
     #[clap(short, long)]
     file: String,
@@ -47,12 +62,32 @@ fn main() -> core::result::Result<(), Box<dyn std::error::Error>> {
     // You can handle information about subcommands by requesting their matches by name
     // (as below), requesting just the name used, or both at the same time
     match opts.subcmd {
-        SubCommand::Compile(t) => return compile(t)
+        SubCommand::Compile(t) => return compile(t),
+        SubCommand::Print(t) => return print(t),
     }
 }
 
+fn print(p: Print) -> core::result::Result<(), Box<dyn std::error::Error>> {
+    let filename = p.file;
+    debug!("Compiling file: {}", filename);
+
+    let content = fs::read_to_string(&filename).unwrap(); // FIXME
+    let chars = content.chars();
+
+    let tokens = TokenIterator::new_iterator(chars)
+        .filter(|x| (*x != Token::Space) && (*x != Token::NewLine));
+
+    let mut out = File::create(format!("{}.tks", &filename))?;
+
+    for token in tokens {
+        writeln!(out, "{:?}", token)?;
+    }
+
+    Ok(())
+}
+
 fn compile(c: Compile) -> core::result::Result<(), Box<dyn std::error::Error>> {
-    let compiler = Compiler::from_arg_matches();
+    let compiler = Compiler::new();
 
     let file = c.file.as_ref();
 

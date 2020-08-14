@@ -10,7 +10,7 @@ use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::ast::AbstractSyntaxTreeNode;
 use crate::compiler::code_generator::CodeGenerator;
-use crate::scanner::{Scanner, Token};
+use crate::scanner::{TokenIterator, Token};
 
 pub mod code_generator;
 
@@ -20,19 +20,11 @@ pub enum Error {
     Error(String),
 }
 
-pub struct Compiler {
-    scanner: Scanner
-}
+pub struct Compiler {}
 
 impl Compiler {
-    pub fn from_arg_matches() -> Compiler {
-        Compiler::new(
-            Scanner::from_arg_matches()
-        )
-    }
-
-    fn new(scanner: Scanner) -> Compiler {
-        Compiler { scanner }
+    pub fn new() -> Compiler {
+        Compiler {}
     }
 
     pub fn compile(&self, filename: &str) -> core::result::Result<(), Box<dyn std::error::Error>> {
@@ -41,11 +33,11 @@ impl Compiler {
         let content = fs::read_to_string(filename).unwrap(); // FIXME
         let chars: Chars = content.chars();
 
-        let tokens = self.scanner.new_iterator(chars).filter(|x| *x != Token::Space);
+        let tokens = TokenIterator::new_iterator(chars).filter(|x| *x != Token::Space);
 
         let code_generator = CodeGenerator::new(tokens);
 
-        let mut out = File::create("out.s")?;
+        let mut out = File::create(format!("{}.s", filename))?;
         let mut registers = Registers::new();
 
         cgpreamble(out.by_ref())?;

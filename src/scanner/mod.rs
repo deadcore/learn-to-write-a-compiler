@@ -80,13 +80,15 @@ impl Precedence for Token {
     }
 }
 
-pub struct Scanner {}
-
 pub struct TokenIterator<T: Iterator<Item=char>> {
     inner: Peekable<T>,
 }
 
 impl<T: Iterator<Item=char>> TokenIterator<T> {
+    pub fn new_iterator(chars: T) -> TokenIterator<T> {
+        TokenIterator::new(chars.peekable())
+    }
+
     fn new(inner: Peekable<T>) -> Self {
         TokenIterator { inner }
     }
@@ -98,7 +100,7 @@ impl<T: Iterator<Item=char>> TokenIterator<T> {
         panic!("Error - Received no token but expected a whitespace")
     }
 
-    fn read_alphbetic_token(&mut self) -> Option<Token> {
+    fn read_alphabetic_token(&mut self) -> Option<Token> {
         let mut result = String::new();
         while self.inner.peek().map_or_else(|| false, |x| x.is_alphanumeric()) {
             let next = self.inner.next().unwrap();
@@ -135,27 +137,12 @@ impl<T: Iterator<Item=char>> Iterator for TokenIterator<T> {
                 return self.read_int_lit_token();
             }
             if c.is_alphabetic() {
-                return self.read_alphbetic_token();
+                return self.read_alphabetic_token();
             }
             return self.read_symbol();
         }
 
         return None;
-    }
-}
-
-
-impl Scanner {
-    pub fn from_arg_matches() -> Scanner {
-        Scanner::new()
-    }
-
-    pub fn new() -> Scanner {
-        Scanner {}
-    }
-
-    pub fn new_iterator<T: Iterator<Item=char>>(&self, chars: T) -> TokenIterator<T> {
-        TokenIterator::new(chars.peekable())
     }
 }
 
