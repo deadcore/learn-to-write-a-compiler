@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Compiler - Compile" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="channel" value="DEFAULT" />
-    <option name="command" value="run --package learn-to-write-a-compiler --bin compiler -- compile --file ./example.lang" />
+    <option name="command" value="run --package learn-to-write-a-compiler --bin compiler -- compile --file ./example.svc.lang" />
     <option name="allFeatures" value="false" />
     <option name="emulateTerminal" value="false" />
     <option name="backtrace" value="SHORT" />

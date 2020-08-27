@@ -103,3 +103,36 @@ pub fn cgloadglob<W: Write>(sym: &str, registers: &mut Registers, mut out: W) ->
     writeln!(out, "\tmovq\t{}(%rip), {}\n", sym, r.name())?;
     return Ok(r);
 }
+
+pub fn cgcompare<W: Write>(how: &str, r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, mut out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    writeln!(out, "\tcmpq\t{}, {}", r2, r1)?;
+    writeln!(out, "\t{}\t{}b", how, r2)?;
+    writeln!(out, "\tandq\t$255,{}", r2)?;
+    registers.free_register(r1);
+
+    return Ok(r2);
+}
+
+pub fn cgequal<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    return cgcompare("sete", r1, r2, registers, out);
+}
+
+pub fn cgnotequal<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    return cgcompare("setne", r1, r2, registers, out);
+}
+
+pub fn cglessthan<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    return cgcompare("setl", r1, r2, registers, out);
+}
+
+pub fn cggreaterthan<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    return cgcompare("setg", r1, r2, registers, out);
+}
+
+pub fn cglessequal<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    return cgcompare("setle", r1, r2, registers, out);
+}
+
+pub fn cggreaterequal<W: Write>(r1: RegisterIndex, r2: RegisterIndex, registers: &mut Registers, out: W) -> core::result::Result<RegisterIndex, Box<dyn std::error::Error>> {
+    return cgcompare("setge", r1, r2, registers, out);
+}

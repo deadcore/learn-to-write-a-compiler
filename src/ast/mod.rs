@@ -20,6 +20,12 @@ pub enum AbstractSyntaxTreeExpressionNodeType {
     Multiply,
     Divide,
     Assignment,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual,
+    NotEqual,
+    Equality,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -57,6 +63,12 @@ impl From<Token> for AbstractSyntaxTreeExpressionNodeType {
             Token::Minus => AbstractSyntaxTreeExpressionNodeType::Subtract,
             Token::Star => AbstractSyntaxTreeExpressionNodeType::Multiply,
             Token::Slash => AbstractSyntaxTreeExpressionNodeType::Divide,
+            Token::LessThan => AbstractSyntaxTreeExpressionNodeType::LessThan,
+            Token::LessThanEqual => AbstractSyntaxTreeExpressionNodeType::LessThanEqual,
+            Token::GreaterThan => AbstractSyntaxTreeExpressionNodeType::GreaterThan,
+            Token::GreaterThanEqual => AbstractSyntaxTreeExpressionNodeType::GreaterThanEqual,
+            Token::NotEqual => AbstractSyntaxTreeExpressionNodeType::NotEqual,
+            Token::Equality => AbstractSyntaxTreeExpressionNodeType::Equality,
             unhandled => panic!("Unable to convert {:?} to an [AbstractSyntaxTreeInteriorNodeType]", unhandled)
         }
     }

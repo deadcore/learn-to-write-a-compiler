@@ -14,23 +14,6 @@ impl std::convert::From<std::io::Error> for ScannerError {
     }
 }
 
-impl std::convert::From<char> for Token {
-    fn from(c: char) -> Self {
-        match c {
-            '+' => Token::Plus,
-            '-' => Token::Minus,
-            '*' => Token::Star,
-            '/' => Token::Slash,
-            ';' => Token::SemiColon,
-            '=' => Token::Assignment,
-            '\n' => Token::NewLine,
-            ' ' => Token::Space,
-            v => panic!("Unable to handle token: [{}]", v)
-        }
-    }
-}
-
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Plus,
@@ -44,6 +27,12 @@ pub enum Token {
     Identifier(String),
     Assignment,
     NewLine,
+    LessThan,
+    LessThanEqual,
+    GreaterThan,
+    GreaterThanEqual,
+    NotEqual,
+    Equality,
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -75,6 +64,12 @@ impl Precedence for Token {
             Token::Minus => 10,
             Token::Star => 20,
             Token::Slash => 20,
+            Token::LessThan => 40,
+            Token::LessThanEqual => 40,
+            Token::GreaterThan => 40,
+            Token::GreaterThanEqual => 40,
+            Token::NotEqual => 40,
+            Token::Equality => 40,
             _ => 0
         }
     }
@@ -95,7 +90,46 @@ impl<T: Iterator<Item=char>> TokenIterator<T> {
 
     fn read_symbol(&mut self) -> Option<Token> {
         if let Some(t) = self.inner.next() {
-            return Some(Token::from(t));
+            return Some(match t {
+                '+' => Token::Plus,
+                '-' => Token::Minus,
+                '*' => Token::Star,
+                '/' => Token::Slash,
+                ';' => Token::SemiColon,
+                '=' => {
+                    match self.inner.peek() {
+                        Some('=') => {
+                            self.inner.next();
+                            Token::Equality
+                        }
+                        _ => Token::Assignment
+                    }
+                }
+                '\n' => Token::NewLine,
+                ' ' => Token::Space,
+                '<' => match self.inner.peek() {
+                    Some('=') => {
+                        self.inner.next();
+                        Token::LessThanEqual
+                    }
+                    _ => Token::LessThan
+                }
+                '>' => match self.inner.peek() {
+                    Some('=') => {
+                        self.inner.next();
+                        Token::GreaterThanEqual
+                    }
+                    _ => Token::GreaterThan
+                },
+                '!' => {
+                    match self.inner.next() {
+                        Some('=') => Token::NotEqual,
+                        None => panic!("Expected another token after ! but got nothing"),
+                        Some(v) => panic!("Unsupported token [{}] after !", v),
+                    }
+                }
+                v => panic!("Unable to handle token: [{}]", v)
+            });
         }
         panic!("Error - Received no token but expected a whitespace")
     }

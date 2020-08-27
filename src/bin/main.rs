@@ -8,6 +8,7 @@ use log::LevelFilter;
 
 use learn_to_write_a_compiler::compiler::Compiler;
 use learn_to_write_a_compiler::scanner::{Token, TokenIterator};
+use learn_to_write_a_compiler::compiler::code_generator::CodeGenerator;
 
 /// A language compiler written in rust.
 #[derive(Clap)]
@@ -77,9 +78,11 @@ fn print(p: Print) -> core::result::Result<(), Box<dyn std::error::Error>> {
     let tokens = TokenIterator::new_iterator(chars)
         .filter(|x| (*x != Token::Space) && (*x != Token::NewLine));
 
-    let mut out = File::create(format!("{}.tks", &filename))?;
+    let code_generator = CodeGenerator::new(tokens);
 
-    for token in tokens {
+    let mut out = File::create(format!("{}.ast", &filename))?;
+
+    for token in code_generator {
         writeln!(out, "{:?}", token)?;
     }
 
@@ -89,7 +92,7 @@ fn print(p: Print) -> core::result::Result<(), Box<dyn std::error::Error>> {
 fn compile(c: Compile) -> core::result::Result<(), Box<dyn std::error::Error>> {
     let compiler = Compiler::new();
 
-    let file = c.file.as_ref();
+    let file = c.file;
 
     return compiler.compile(file);
 }

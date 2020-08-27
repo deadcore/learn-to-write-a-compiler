@@ -5,12 +5,13 @@ use std::str::Chars;
 
 use log::debug;
 
-use crate::asm::{cgadd, cgcomment, cgdiv, cgglobsym, cgload, cgloadglob, cgmul, cgpostamble, cgpreamble, cgprintint, cgstorglob, cgsub};
+use crate::asm::{cgadd, cgcomment, cgdiv, cgglobsym, cgload, cgloadglob, cgmul, cgpostamble, cgpreamble, cgprintint, cgstorglob, cgsub, cglessthan};
 use crate::asm::registers::{RegisterIndex, Registers};
 use crate::ast::*;
 use crate::ast::AbstractSyntaxTreeNode;
 use crate::compiler::code_generator::CodeGenerator;
 use crate::scanner::{TokenIterator, Token};
+use std::path::Path;
 
 pub mod code_generator;
 
@@ -27,17 +28,20 @@ impl Compiler {
         Compiler {}
     }
 
-    pub fn compile(&self, filename: &str) -> core::result::Result<(), Box<dyn std::error::Error>> {
-        debug!("Compiling file: {}", filename);
+    pub fn compile<P: AsRef<Path>>(&self, path: P) -> core::result::Result<(), Box<dyn std::error::Error>> {
+        let file = path.as_ref();
+        debug!("Compiling file: {:?}", file);
 
-        let content = fs::read_to_string(filename).unwrap(); // FIXME
+        let file_name = file.file_stem().unwrap().to_os_string().into_string().unwrap();
+
+        let content = fs::read_to_string(file).unwrap(); // FIXME
         let chars: Chars = content.chars();
 
         let tokens = TokenIterator::new_iterator(chars).filter(|x| *x != Token::Space);
 
         let code_generator = CodeGenerator::new(tokens);
 
-        let mut out = File::create(format!("{}.s", filename))?;
+        let mut out = File::create(format!("{}.s", file_name))?;
         let mut registers = Registers::new();
 
         cgpreamble(out.by_ref())?;
@@ -52,10 +56,30 @@ impl Compiler {
         cgcomment(out.by_ref(), "Ending users code")?;
         cgpostamble(out.by_ref())?;
 
+        use std::process::Command;
+
+        let mut cc = Command::new("cc");
+        cc.arg("-o");
+        cc.arg(&file_name);
+        cc.arg(format!("{}.s", file_name));
+
+        debug!("command: {:?}", cc);
+
+        let result = cc.spawn().unwrap();
+
+        // .arg("-l")
+            // .arg("-a");
+        // .spawn()
+        // .expect("ls command failed to start");
+
+        debug!("result: {:?}", result);
+
+
         Ok(())
     }
 
     fn interpret_ast_to_asm<W: Write>(&self, w: &mut W, registers: &mut Registers, ast: AbstractSyntaxTreeNode) -> core::result::Result<Option<RegisterIndex>, Box<dyn std::error::Error>> {
+        debug!("Interpreting abstract syntax tree: {:?}", ast);
         return match ast {
             AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Add, left, right) =>
                 Ok(
@@ -79,6 +103,18 @@ impl Compiler {
                         )?
                     )
                 ),
+            AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::LessThan, left, right) => {
+                Ok(
+                    Some(
+                        cglessthan(
+                            self.interpret_ast_to_asm(w, registers, *left)?.expect("Expected a value to be placed in a register"),
+                            self.interpret_ast_to_asm(w, registers, *right)?.expect("Expected a value to be placed in a register"),
+                            registers,
+                            w,
+                        )?
+                    )
+                )
+            }
             AbstractSyntaxTreeNode::Expression(AbstractSyntaxTreeExpressionNodeType::Multiply, left, right) => {
                 Ok(
                     Some(
